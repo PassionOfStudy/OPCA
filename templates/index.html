@@ -1,36 +1,109 @@
 <!DOCTYPE html>
-<html lang="ko">
-
+<html>
 <head>
-    <!-- Required meta tags -->
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
-          crossorigin="anonymous">
-
-    <!-- JS -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Responsive Single Page Template With Flexbox</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700" rel="stylesheet">
+    <link rel="stylesheet" href="../static/style.css">
+    <!--jQuery Latest Stable Version 3.5.1 CDN-->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
-            integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
-            crossorigin="anonymous"></script>
-
-    <!-- 구글폰트 -->
-    <link href="https://fonts.googleapis.com/css?family=Stylish&display=swap" rel="stylesheet">
-
-    <title>OPCA | 경쟁 주유소가격 자동 알리미</title>
-
-    <!--스크립트 작성-->
     <script>
+        $(document).ready(function () {
+            // 창을 새로고침할 때마다 실행할 함수를 여기에 입력합니다.
+            $('#oilprice-info').empty();
+        });
+
+        function showOilPriceInfo() {
+            $('#oilprice-info').empty();
+            // 여기에 코딩하세요
+            $.ajax({
+                type: 'GET',
+                url: '/read',
+                data: {},
+                success: function (response) {
+                    let oilbanksInfo = response['oil'];
+                    let tempHtml = '';
+                    for(let i=0; i<oilbanksInfo.length; i++) {
+                        let logo = oilbanksInfo[i]['POLL_DIV_CO'];
+                        let name = oilbanksInfo[i]['OS_NM'];
+                        let gasoline = '';
+                        let disel = '';
+                        let oilPrice = oilbanksInfo[i]['OIL_PRICE'];
+                        for(let j=0; j<oilPrice.length; j++){
+                            if(oilPrice[j]['PRODCD'] == 'B027') {
+                                gasoline = oilPrice[j]['PRICE'];
+                            } else if(oilPrice[j]['PRODCD'] == 'D047') {
+                                disel = oilPrice[j]['PRICE'];
+                            }
+                        }
+                        tempHtml += getOilbankPriceInfo(logo, name, gasoline, disel);
+                    }
+                    $('#oilprice-info').append(tempHtml);
+                }
+            })
+        }
+        function getOilbankPriceInfo(logo, name, gasoline, disel) {
+            let tempHtml = `<tr>
+                                <td>${0}</td>
+                                <td>${logo}</td>
+                                <td>${name}</td>
+                                <td>${gasoline}</td>
+                                <td>${disel}</td>
+                                <td>비고</td>
+                            </tr>`;
+            return tempHtml;
+        }
     </script>
 
 </head>
 
 <body>
+<div id="wrap">
+    <header>
+        <h2><a href="#">OPCA</a></h2>
+        <nav>
+            <ul>
+                <li><a href="#">Home</a></li>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Contacts</a></li>
+            </ul>
+        </nav>
+    </header>
 
+    <section class="main">
+        <div class="background">
+            <h1>경쟁 주유소 가격 변동 확인 사이트</h1>
+            <h3>Just make By Yourself</h3>
+            <a href="#" class="btn" target="_blank">기능 추가하기</a>
+            <div class="table_price">
+                <button onclick="showOilPriceInfo()">업데이트</button>
+                <table>
+                    <thead>
+                    <tr>
+                        <td>XX</td>
+                        <td>밴드</td>
+                        <td>상호명</td>
+                        <td>휘발유가격</td>
+                        <td>경유가격</td>
+                        <td>비고</td>
+                    </tr>
+                    </thead>
+                    <tbody id="oilprice-info">
+                    <tr>
+                        <td>Mine</td>
+                        <td>SK</td>
+                        <td>분당탑주유소</td>
+                        <td>1335</td>
+                        <td>1135</td>
+                        <td>비고</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
 </body>
-
 </html>
-

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Responsive Single Page Template With Flexbox</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700" rel="stylesheet">
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+
+<body>
+<div id="wrap">
+    <header>
+        <h2><a href="#">OPCA</a></h2>
+        <nav>
+            <ul>
+                <li><a href="#">Home</a></li>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Contacts</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="home">
+        <div class="background">
+            <h1>경쟁 주유소 가격 변동 확인 사이트</h1>
+            <h3>Just make By Yourself</h3>
+            <a href="#" class="btn" target="_blank">기능 추가하기</a>
+            <div class="table_price">
+                <button onclick="showBikeInfo()">업데이트</button>
+                <table>
+                    <thead>
+                    <tr>
+                        <td>XX</td>
+                        <td>밴드</td>
+                        <td>상호명</td>
+                        <td>휘발유가격</td>
+                        <td>경유가격</td>
+                        <td>비고</td>
+                    </tr>
+                    </thead>
+                    <tbody id="bike-info">
+                    <tr>
+                        <td>Mine</td>
+                        <td>SK</td>
+                        <td>분당탑주유소</td>
+                        <td>1335</td>
+                        <td>1135</td>
+                        <td>비고</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

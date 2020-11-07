@@ -15,6 +15,7 @@
 import requests
 from flask import Flask, render_template, request, jsonify
 import json
+from pymongo import MongoClient
 
 # 고정값 #
 apiKey = 'F862201006'          # API key
@@ -78,12 +79,14 @@ def getCompetitionOilbankInfo(apiKey, oilbankID):
 
 ## API 구조를 만드는 함수
 def makeAPI(apiKey, oilbankIDs):
-    api = {"result": 'success', "OIL": []}
+    api = {"Result": 'success', "oil": []}
     for item in oilbankIDs:
-        api["OIL"].append(getCompetitionOilbankInfo(apiKey, item))
+        api["oil"].append(getCompetitionOilbankInfo(apiKey, item))
     return api
 
 areaCode = getAreaCode(apiKey)
 coordinate = getCoordinate(apiKey, myOilBankName, areaCode)
 competitionOilbankIDs = getCompetitionOilbankID(apiKey, coordinate, radius, prodcd)
 api = makeAPI(apiKey, competitionOilbankIDs)
+
+## 처음 조회 MongoDB에 저장하기
