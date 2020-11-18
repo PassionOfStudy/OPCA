@@ -1,5 +1,5 @@
 ## 필요한 모듈(Flask, pymongo) import하기
-import api
+import opca_db
 from flask import Flask, render_template, jsonify, request
 from pymongo import MongoClient
 
@@ -14,10 +14,8 @@ def home():
 # API Read 기능
 @app.route('/read', methods=['GET'])
 def show_oilprice():
-    doc = api.api
+    doc = opca_db.api
     return jsonify(doc)
-
-# API Create 기능
 
 
 if __name__ == '__main__':

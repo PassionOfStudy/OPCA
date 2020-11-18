@@ -1,3 +1,15 @@
+## 업데이트 되기 전 DB 데이터 저장
+
+# 필요한 모듈(pymongo, requests, jsonify, json) import
+import requests, json, datetime
+from flask import Flask, render_template, request, jsonify
+from pymongo import MongoClient
+
+# pymongo db 만들기
+client = MongoClient('localhost', 27017)
+db = client.dbopca
+
+########################################### API 만들기 ###########################################
                                     ## 오피넷 유가정보 무료 API 파싱 ##
 ####### << 오피넷 오픈 API 이용 정보 >> #######
 ## 1. 지역코드 얻기 #######
@@ -11,11 +23,7 @@
 ## 4. 주유소 상세정보 얻기 #######
 # url = http://www.opinet.co.kr/api/detailById.do?code=${APIkey}&id=${주유소ID}&out=json
 
-# 필요한 모듈(requests, jsonify, json) import
-import requests
-from flask import Flask, render_template, request, jsonify
-import json
-from pymongo import MongoClient
+
 
 # 고정값 #
 apiKey = 'F862201006'          # API key
@@ -89,4 +97,57 @@ coordinate = getCoordinate(apiKey, myOilBankName, areaCode)
 competitionOilbankIDs = getCompetitionOilbankID(apiKey, coordinate, radius, prodcd)
 api = makeAPI(apiKey, competitionOilbankIDs)
 
+
+###########################################################################################################
+########################################### OPCA DB 만들기 ###########################################
+# 1. 초기화 DB 만들기
+def initalizeDB(api):
+    oilbankLists = api["oil"]
+    date = datetime.datetime.now()
+    init_db = []
+    # API에서 불러온 데이터를 DB에 넣기위해 for문이용
+    for item in oilbankLists:
+        initial_db = {
+            "oilbank_name": "",
+            "oilbank_brand": "",
+            "gasoline_price": {
+                "before": {"price": 0, "date": ""},
+                "current": {"price": 0, "date": ""},
+                "changed": {"check": False, "value": 0}
+            },
+            "disel_price": {
+                "before": {"price": 0, "date": ""},
+                "current": {"price": 0, "date": ""},
+                "changed": {"check": False, "value": 0}
+            },
+            "checked": False
+        }
+        initial_db["oilbank_name"] = item["OS_NM"]
+        initial_db["oilbank_brand"] = item["POLL_DIV_CO"]
+        initial_db["gasoline_price"]["current"]["date"] = date
+        initial_db["disel_price"]["current"]["date"] = date
+        for price in item["OIL_PRICE"]:
+            if price["PRODCD"] == "B027":
+                gasoline_price = {"before": {"price": 0, "date": ""},
+                                  "current": {"price": price["PRICE"], "date": date}}
+                initial_db["gasoline_price"] = gasoline_price
+            elif price["PRODCD"] == "D047":
+                disel_price = {"before": {"price": 0, "date": ""},
+                                  "current": {"price": price["PRICE"], "date": date}}
+                initial_db["disel_price"] = disel_price
+        init_db.append(initial_db)
+    return init_db
+
+# ## DB 초기화
+# db.opca_db.insert_many(initalizeDB(api))
+
+# 2. DB에 조회한 데이터 업데이트하기
+#: current -> before, 조회한 데이터 -> current
+def updateDB():
+    return 0
+
+
 ## 처음 조회 MongoDB에 저장하기
+
+# collection 생성 및 데이터 DB에 저장
+# initial_db = db.oilbanks_info.insert(db.api['oil'])

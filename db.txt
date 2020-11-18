@@ -1,0 +1,46 @@
+### DB 설계 ###
+1. 주유소 이름
+{oilbank_name: "분당탑주유소"}
+2. 주유소 브랜드
+{oilbank_brand: "oilbank_brand"
+3. 휘발유 가격
+{gasoline: {before: {price: 1335, date: 시간}, current: {price: 1335, date: 시간}, changed: {check: false, value: 0}
+4. 경유 가격
+{disel: {before: {price: 1135, date: 시간}, current: {price: 1135, date: 시간}, changed: {check: false, value: 0}
+5. 가격 변동 유무
+{checked: false}
+
+### 전체 DB ###
+initial_db = {
+    "oilbank_name": "",
+    "oilbank_brand": "",
+    "gasoline_price": {
+                "before": {
+                    "price": 0,
+                    "date": date()
+                },
+                "current": {
+                    "price": 0,
+                    "date": date()
+                },
+                "changed": {
+                    "check": false,
+                    "value": 0
+                }
+    },
+    "disel_price": {
+                    "before": {
+                        "price": 0,
+                        "date": date()
+                    },
+                    "current": {
+                        "price": 0,
+                        "date": date()
+                    },
+                    "changed": {
+                        "check": false,
+                        "value": 0
+                    }
+    },
+    "checked": false
+}
