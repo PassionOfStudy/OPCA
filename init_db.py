@@ -1,5 +1,3 @@
-## 업데이트 되기 전 DB 데이터 저장
-
 # 필요한 모듈(pymongo, requests, jsonify, json) import
 import requests, json, datetime, telegram
 from flask import Flask, render_template, request, jsonify
@@ -8,17 +6,6 @@ from pymongo import MongoClient
 # pymongo db 만들기
 client = MongoClient('localhost', 27017)
 db = client.dbopca
-
-#Telegram Bot Message Sender 사용시 필요한 데이터
-TELEGRAM_TOKEN = '텔레그램 토큰값'
-bot = telegram.Bot( token=TELEGRAM_TOKEN )
-updates = bot.getUpdates()
-chat_id = updates[-1].message.chat.id
-
-# Telegram Push Message Sender
-def pushTelegramMessage(oilbank_name, gasolineDiffValue, diselDiffValue):
-    bot.sendMessage(chat_id=chat_id, text=f'{oilbank_name}의 \n휘발유가격이 {gasolineDiffValue}, \n경유가격이 {diselDiffValue} \n 변동되었습니다..'.format(chat_id))
-    return 0
 
 ########################################### API 만들기 ###########################################
 ## 오피넷 유가정보 무료 API 파싱 ##
@@ -116,68 +103,44 @@ api = makeAPI(apiKey, competitionOilbankIDs)
 
 ###########################################################################################################
 ########################################### OPCA DB 만들기 ###########################################
-### DB에 조회한 데이터 업데이트하기 ###
-#: current -> before, 조회한 데이터 -> current
-def updateDB():
-    opca_db = list(db.opca_db.find({}, {'_id': 0}))
+### 초기화 DB 만들기 ###
+def initalizeDB(api):
+    oilbankLists = api["oil"]
     date = datetime.datetime.now()
-    for opcaDB, opcaAPI in zip(opca_db, api["oil"]):
-        gasoline_price = {}
-        disel_price = {}
-        before_gasoline_price = {
-            "price": opcaDB["gasoline_price"]["current"]["price"],
-            "date": opcaDB["gasoline_price"]["current"]["date"]}
-        before_disel_price = {
-            "price": opcaDB["disel_price"]["current"]["price"],
-            "date": opcaDB["disel_price"]["current"]["date"]}
-        for price in opcaAPI["OIL_PRICE"]:
+    init_db = []
+    # API에서 불러온 데이터를 DB에 넣기위해 for문이용
+    for item in oilbankLists:
+        initial_db = {
+            "oilbank_name": "",
+            "oilbank_brand": "",
+            "gasoline_price": {
+                "before": {"price": 0, "date": ""},
+                "current": {"price": 0, "date": ""},
+                "changed": {"check": False, "value": 0}
+            },
+            "disel_price": {
+                "before": {"price": 0, "date": ""},
+                "current": {"price": 0, "date": ""},
+                "changed": {"check": False, "value": 0}
+            },
+            "checked": False
+        }
+        initial_db["oilbank_name"] = item["OS_NM"]
+        initial_db["oilbank_brand"] = item["POLL_DIV_CO"]
+        initial_db["gasoline_price"]["current"]["date"] = date
+        initial_db["disel_price"]["current"]["date"] = date
+        for price in item["OIL_PRICE"]:
             if price["PRODCD"] == "B027":
-                current_gasoline_price = {"price": price["PRICE"], "date": date}
-                gasoline_only_price = {"before": before_gasoline_price, "current": current_gasoline_price}
-                gasoline_price = {
-                    "before": gasoline_only_price["before"],
-                    "current": gasoline_only_price["current"],
-                    "changed": changedGasolinePrice(gasoline_only_price)}
+                gasoline_price = {"before": {"price": 0, "date": ""},
+                                  "current": {"price": price["PRICE"], "date": date},
+                                  "changed": {"check": False, "value": 0}}
+                initial_db["gasoline_price"] = gasoline_price
             elif price["PRODCD"] == "D047":
-                current_disel_price = {"price": price["PRICE"], "date": date}
-                disel_only_price = {"before": before_disel_price, "current": current_disel_price}
-                disel_price = {
-                    "before": disel_only_price["before"],
-                    "current": disel_only_price["current"],
-                    "changed": changedDiselPrice(disel_only_price)}
-        ## mongoDB 업데이트
-        db.opca_db.update_many({"oilbank_name": opcaAPI["OS_NM"]},
-                          {'$set': {
-                              "gasoline_price": gasoline_price,
-                              "disel_price": disel_price,
-                              "checked": checkedWholeChange(gasoline_price, disel_price)}})
-        ## 가격변동시 텔레그램 푸쉬알람 발생
-        if checkedWholeChange(gasoline_price, disel_price):
-            pushTelegramMessage(opcaAPI["OS_NM"], gasoline_price["changed"]["value"], disel_price["changed"]["value"])
-    return 0
+                disel_price = {"before": {"price": 0, "date": ""},
+                               "current": {"price": price["PRICE"], "date": date},
+                                "changed": {"check": False, "value": 0}}
+                initial_db["disel_price"] = disel_price
+        init_db.append(initial_db)
+    return init_db
 
-def changedGasolinePrice(gasolinePrice):
-    gasoline_price_changed = {}
-    if gasolinePrice["before"]["price"] != gasolinePrice["current"]["price"]:
-        gasoline_price_changed = {"check": True, "value": gasolinePrice["before"]["price"] - gasolinePrice["current"]["price"]}
-    else:
-        gasoline_price_changed = {"check": False, "value": 0}
-    return gasoline_price_changed
-
-def changedDiselPrice(diselPrice):
-    disel_price_changed = {}
-    if diselPrice["before"]["price"] != diselPrice["current"]["price"]:
-        disel_price_changed = {"check": True, "value": diselPrice["before"]["price"] - diselPrice["current"]["price"]}
-    else:
-        disel_price_changed = {"check": False, "value": 0}
-    return disel_price_changed
-
-def checkedWholeChange(gasoline, disel):
-    if gasoline["changed"]["check"] or disel["changed"]["check"]:
-        result = True
-    else:
-        result = False
-    return result
-
-
-updateDB()
+db.opca_db.insert_many(initalizeDB(api))
