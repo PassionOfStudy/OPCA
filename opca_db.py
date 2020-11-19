@@ -10,7 +10,7 @@ client = MongoClient('localhost', 27017)
 db = client.dbopca
 
 ########################################### API 만들기 ###########################################
-                                    ## 오피넷 유가정보 무료 API 파싱 ##
+## 오피넷 유가정보 무료 API 파싱 ##
 ####### << 오피넷 오픈 API 이용 정보 >> #######
 ## 1. 지역코드 얻기 #######
 # url = http://www.opinet.co.kr/api/areaCode.do?out=json&code=${APIkey}
@@ -24,17 +24,17 @@ db = client.dbopca
 # url = http://www.opinet.co.kr/api/detailById.do?code=${APIkey}&id=${주유소ID}&out=json
 
 
-
 # 고정값 #
-apiKey = 'F862201006'          # API key
-areaName = '경기'               # 지역이름
-myOilBankName = '분당탑주유소'    # 주유소상호명
-prodcd = {                    # 상품코드
+apiKey = 'F862201006'  # API key
+areaName = '경기'  # 지역이름
+myOilBankName = '분당탑주유소'  # 주유소상호명
+prodcd = {  # 상품코드
     "gasolin": 'B027',
     "disel": 'D047',
     "kerosene": 'C004'
 }
-radius = 3000                 # 반경(단위:미터)
+radius = 3000  # 반경(단위:미터)
+
 
 ## 지역코드 얻는 함수
 # input  : API key
@@ -49,6 +49,7 @@ def getAreaCode(apiKey):
             areaCode = item["AREA_CD"]
     return areaCode
 
+
 ## 주유소 x,y 좌표 얻는 함수
 # input  : API key, 주유소상호명, 지역코드
 # output : 주유소좌표정보
@@ -61,6 +62,7 @@ def getCoordinate(apiKey, oilBankName, areaCode):
         'y': apiStrToJson["RESULT"]["OIL"][0]["GIS_Y_COOR"],
     }
     return coordinate
+
 
 ## 반경 내 경쟁주유소 고유 ID 얻는 함수
 # input  : API key, 주유소좌표정보, 반경(단위:미터), 상품코드
@@ -75,6 +77,7 @@ def getCompetitionOilbankID(apiKey, coordinate, radius, prodcd):
         competitionOilbankIDs.append(item["UNI_ID"])
     return competitionOilbankIDs
 
+
 ## 경쟁주유소들의 상세정보 얻는 함수
 # input  : API key, 주유소ID
 # output : 경쟁주유소상세정보(딕셔너리)
@@ -85,12 +88,14 @@ def getCompetitionOilbankInfo(apiKey, oilbankID):
     competitionOilbankInfo = apiStrToJson["RESULT"]["OIL"][0]
     return competitionOilbankInfo
 
+
 ## API 구조를 만드는 함수
 def makeAPI(apiKey, oilbankIDs):
     api = {"Result": 'success', "oil": []}
     for item in oilbankIDs:
         api["oil"].append(getCompetitionOilbankInfo(apiKey, item))
     return api
+
 
 areaCode = getAreaCode(apiKey)
 coordinate = getCoordinate(apiKey, myOilBankName, areaCode)
@@ -129,25 +134,69 @@ def initalizeDB(api):
         for price in item["OIL_PRICE"]:
             if price["PRODCD"] == "B027":
                 gasoline_price = {"before": {"price": 0, "date": ""},
-                                  "current": {"price": price["PRICE"], "date": date}}
+                                  "current": {"price": price["PRICE"], "date": date},
+                                  "changed": {"check": False, "value": 0}}
                 initial_db["gasoline_price"] = gasoline_price
             elif price["PRODCD"] == "D047":
                 disel_price = {"before": {"price": 0, "date": ""},
-                                  "current": {"price": price["PRICE"], "date": date}}
+                               "current": {"price": price["PRICE"], "date": date},
+                                "changed": {"check": False, "value": 0}}
                 initial_db["disel_price"] = disel_price
         init_db.append(initial_db)
     return init_db
 
-# ## DB 초기화
-# db.opca_db.insert_many(initalizeDB(api))
-
 # 2. DB에 조회한 데이터 업데이트하기
 #: current -> before, 조회한 데이터 -> current
 def updateDB():
+    opca_db = list(db.opca_db.find({}, {'_id': 0}))
+    date = datetime.datetime.now()
+    for opcaDB, opcaAPI in zip(opca_db, api["oil"]):
+        gasoline_price = {}
+        disel_price = {}
+        before_gasoline_price = {
+            "price": opcaDB["gasoline_price"]["current"]["price"],
+            "date": opcaDB["gasoline_price"]["current"]["date"]}
+        before_disel_price = {
+            "price": opcaDB["disel_price"]["current"]["price"],
+            "date": opcaDB["disel_price"]["current"]["date"]}
+        for price in opcaAPI["OIL_PRICE"]:
+            if price["PRODCD"] == "B027":
+                current_gasoline_price = {"price": price["PRICE"], "date": date}
+                gasoline_only_price = {"before": before_gasoline_price, "current": current_gasoline_price}
+                gasoline_price = {"before": gasoline_only_price["before"], "current": gasoline_only_price["current"], "changed": changedGasolinePrice(gasoline_only_price)}
+            elif price["PRODCD"] == "D047":
+                current_disel_price = {"price": price["PRICE"], "date": date}
+                disel_only_price = {"before": before_disel_price, "current": current_disel_price}
+                disel_price = {"before": disel_only_price["before"], "current": disel_only_price["current"], "changed": changedDiselPrice(disel_only_price)}
+
+        db.opca_db.update_many({"oilbank_name": opcaAPI["OS_NM"]},
+                          {'$set': {"gasoline_price": gasoline_price, "disel_price": disel_price, "checked": checkedWholeChange(gasoline_price, disel_price)}})
     return 0
 
+def changedGasolinePrice(gasolinePrice):
+    gasoline_price_changed = {}
+    if gasolinePrice["before"]["price"] != gasolinePrice["current"]["price"]:
+        gasoline_price_changed = {"check": True, "value": gasolinePrice["current"]["price"] - gasolinePrice["before"]["price"]}
+    else:
+        gasoline_price_changed = {"check": False, "value": 0}
+    return gasoline_price_changed
 
-## 처음 조회 MongoDB에 저장하기
+def changedDiselPrice(diselPrice):
+    disel_price_changed = {}
+    if diselPrice["before"]["price"] != diselPrice["current"]["price"]:
+        disel_price_changed = {"check": True, "value": diselPrice["current"]["price"] - diselPrice["before"]["price"]}
+    else:
+        disel_price_changed = {"check": False, "value": 0}
+    return disel_price_changed
 
-# collection 생성 및 데이터 DB에 저장
-# initial_db = db.oilbanks_info.insert(db.api['oil'])
+def checkedWholeChange(gasoline, disel):
+    if gasoline["changed"]["check"] or disel["changed"]["check"]:
+        result = True
+    else:
+        result = False
+    return result
+
+# # # ## DB 초기화
+# db.opca_db.insert_many(initalizeDB(api))
+
+updateDB()
