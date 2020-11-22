@@ -16,8 +16,22 @@ updates = bot.getUpdates()
 chat_id = updates[-1].message.chat.id
 
 # Telegram Push Message Sender
-def pushTelegramMessage(oilbank_name, gasolineDiffValue, diselDiffValue):
-    bot.sendMessage(chat_id=chat_id, text=f'{oilbank_name}의 \n휘발유가격이 {gasolineDiffValue}, \n경유가격이 {diselDiffValue} \n 변동되었습니다..'.format(chat_id))
+def pushTelegramMessage(oilbank_name, gasoline, disel):
+    if gasoline["changed"]["value"] < 0:
+        bot.sendMessage(chat_id=chat_id,
+                        text=f'{oilbank_name}가 \n휘발유가격을 {abs(gasoline["changed"]["value"])}원 올렸습니다.'.format(chat_id))
+    else :
+        bot.sendMessage(chat_id=chat_id,
+                        text=f'{oilbank_name}가 \n휘발유가격을 {abs(gasoline["changed"]["value"])}원 내렸습니다.'.format(chat_id))
+    if disel["changed"]["value"] < 0:
+        bot.sendMessage(chat_id=chat_id,
+                        text=f'{oilbank_name}가 \n경유가격을 {abs(disel["changed"]["value"])}원 올렸습니다.'.format(chat_id))
+    else:
+        bot.sendMessage(chat_id=chat_id,
+                        text=f'{oilbank_name}가 \n경유가격을 {abs(disel["changed"]["value"])}원 내렸습니다.' .format(chat_id))
+    # bot.sendMessage(chat_id=chat_id, text=f'{oilbank_name}의 \n휘발유가격이 {gasolineDiffValue}, \n경유가격이 {diselDiffValue} \n 변동되었습니다..'.format(chat_id))
+    bot.sendMessage(chat_id=chat_id,
+                    text=f'현재 {oilbank_name}의 \n휘발유가격 : {gasoline["current"]["price"]}, \n경유가격 : {disel["current"]["price"]} \n입니다. '.format(chat_id))
     return 0
 
 ########################################### API 만들기 ###########################################
@@ -36,7 +50,7 @@ def pushTelegramMessage(oilbank_name, gasolineDiffValue, diselDiffValue):
 
 
 # 고정값 #
-apiKey = '무료API키'  # API key
+apiKey = 'Open API Key'  # API key
 areaName = '경기'  # 지역이름
 myOilBankName = '분당탑주유소'  # 주유소상호명
 prodcd = {  # 상품코드
@@ -153,7 +167,8 @@ def updateDB():
                               "checked": checkedWholeChange(gasoline_price, disel_price)}})
         ## 가격변동시 텔레그램 푸쉬알람 발생
         if checkedWholeChange(gasoline_price, disel_price):
-            pushTelegramMessage(opcaAPI["OS_NM"], gasoline_price["changed"]["value"], disel_price["changed"]["value"])
+            # pushTelegramMessage(opcaAPI["OS_NM"], gasoline_price["changed"]["value"], disel_price["changed"]["value"])
+            pushTelegramMessage(opcaAPI["OS_NM"], gasoline_price, disel_price)
     return 0
 
 def changedGasolinePrice(gasolinePrice):

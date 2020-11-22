@@ -23,7 +23,7 @@ db = client.dbopca
 
 
 # 고정값 #
-apiKey = '무료API키'  # API key
+apiKey = 'Open API Key'  # API key
 areaName = '경기'  # 지역이름
 myOilBankName = '분당탑주유소'  # 주유소상호명
 prodcd = {  # 상품코드
